@@ -16,6 +16,8 @@ package config
 
 import (
 	"bytes"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"text/template"
@@ -66,11 +68,28 @@ func RenderContent(in []byte) (out []byte, err error) {
 
 func GetRenderedConfFromFile(path string) (out []byte, err error) {
 	var b []byte
-	b, err = os.ReadFile(path)
-	if err != nil {
+	rawUrl := path
+	if strings.Index(rawUrl, "http") != -1 {
+		response, _err1 := http.Get(path)
+		if _err1 != nil {
+			panic(_err1)
+		}
+		defer response.Body.Close()
+		body, _err := ioutil.ReadAll(response.Body)
+		if _err != nil {
+			return
+		}
+		content := string(body)
+		out, err = RenderContent([]byte(content))
+		return
+
+	} else {
+		b, err = ioutil.ReadFile(path)
+		if err != nil {
+			return
+		}
+		content := string(b)
+		out, err = RenderContent([]byte(content))
 		return
 	}
-
-	out, err = RenderContent(b)
-	return
 }
